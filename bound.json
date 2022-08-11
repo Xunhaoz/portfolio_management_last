@@ -1,0 +1,26 @@
+{
+    "BBY": {
+        "upper_bound": 1.0,
+        "lower_bound": 0.0
+    },
+    "JPM": {
+        "upper_bound": 1.0,
+        "lower_bound": 0.0
+    },
+    "MA": {
+        "upper_bound": 1.0,
+        "lower_bound": 0.0
+    },
+    "PFE": {
+        "upper_bound": 1.0,
+        "lower_bound": 0.0
+    },
+    "RRC": {
+        "upper_bound": 1.0,
+        "lower_bound": 0.0
+    },
+    "XOM": {
+        "upper_bound": 1.0,
+        "lower_bound": 0.0
+    }
+}
