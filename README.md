@@ -1,6 +1,4 @@
----
-marp: true
----
+
 
 # portfolio_management
 
