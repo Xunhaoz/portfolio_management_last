@@ -1,11 +1,3 @@
-<<<<<<< HEAD
----
-marp: true
----
-=======
-
->>>>>>> f44f691ff7e9ccbaf058aaa1a3a2cbc9efceb10c
-
 # portfolio_management
 
 ### 系統需求
