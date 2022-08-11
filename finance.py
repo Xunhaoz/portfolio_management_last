@@ -15,63 +15,7 @@ from pypfopt import expected_returns, risk_models
 import yfinance as yf
 
 '''
-程式輸入範例 0
-python finance.py --mode 0 --input_path ./stockFile  --stock_name JPM --save True
-程式輸出範例 0 ./result.csv
-{
-    "name": "JPM",
-    "mean_pct_change": -0.0010853091333440108,
-    "period": {
-        "stock_data_len": 253,
-        "start_time": "2021-08-09",
-        "end_time": "2022-08-09"
-    },
-    "performance": {
-        "expect_return": -0.2734979016026907,
-        "sharpe_ratio": -1.0117418529079354
-    }
-}
-
-程式輸入範例 1
-python finance.py --mode 1 --input_path ./stockFile --save True --weight_bounds -1 1 --market_neutral True
-程式輸出範例 1 ./result.csv
-{
-    "weights": {
-        "BBY": -0.3987340688778911,
-        "JPM": -1.0,
-        "MA": 0.0381334803583575,
-        "PFE": 0.4732319679195018,
-        "RRC": 0.8873686206000316,
-        "XOM": 1.0
-    },
-    "clean_weight": {
-        "BBY": -0.39873,
-        "JPM": -1.0,
-        "MA": 0.03813,
-        "PFE": 0.47323,
-        "RRC": 0.88737,
-        "XOM": 1.0
-    },
-    "performance": {
-        "expected_annual_return": 2.096628714090833,
-        "annual_volatility": 0.7751822483213032,
-        "sharpe_ratio": 2.6788909557563767
-    }
-}
-
-mode
-0. 單支股票數據
-1. General Efficient Frontier
-2. Black-litterman Allocation
-3. Hierarchical Risk Parity (HRP)
-
-
-input_path
-the path terminating in directory name which contains stock file
-the stock file should be in csv formate
-there are at least Date, and Close two columns in the stock file 
-the period of pieces of datas should be the same and more that two pieces 
-
+This is a scrip which can help calculating better assets allocation from stocks history data. 
 '''
 
 
@@ -130,20 +74,25 @@ class StockClass:
         return info
 
 
-#
 def data_pre_treatment(stocks_class_list):
+    """
+    資料預處理
+    將原本個別以tickit為欄的dataframe取出收盤價
+    在彙整到以只有個股收盤價的單一dataframe中
+    """
     concat_list = []
-    concat_list.append(stocks_class_list[0].get_stock_dataframe()['Date'])
-    for stock in stocks_class_list:
+    concat_list.append(stocks_class_list[0].get_stock_dataframe()['Date'])  # 取得時間欄
+    for stock in stocks_class_list:  # 取得個股收盤價加入串列
         stock_df = stock.get_stock_dataframe()['Close']
         stock_df.rename(stock.get_stock_name(), inplace=True)
         concat_list.append(stock_df)
-    data_for_pypfopt = pd.DataFrame(concat_list).T
+    data_for_pypfopt = pd.DataFrame(concat_list).T  # 合併個股收盤價並轉置索引與列，欄為個股名稱，列為時間
     data_for_pypfopt.set_index('Date', inplace=True)
     return data_for_pypfopt
 
 
 def check_stock_info(stock_class_list, stock_name, save):
+    """查看各股票name, mean_pct_change, period, and performance"""
     result_dict = {}
     if stock_name == 'all':
         for index, stock in enumerate(stock_class_list):
@@ -161,6 +110,10 @@ def check_stock_info(stock_class_list, stock_name, save):
 
 
 def save_result(weights, clean_weight, portfolio_performance, save):
+    """
+        輸入weights, clean_weight, portfolio_performance, and save
+        若 save為 True將儲存成.json檔 否則印在終端機上
+    """
     result_dict = {'weights': weights, 'clean_weight': clean_weight, 'performance': {}}
     result_dict['performance']['expected_annual_return'] = portfolio_performance[0]
     result_dict['performance']['annual_volatility'] = portfolio_performance[1]
@@ -174,6 +127,10 @@ def save_result(weights, clean_weight, portfolio_performance, save):
 
 
 def check_boundary_exist(stock_boundary_path, stock_class_list):
+    """
+    檢查個別資產比例邊界檔是否存在
+    存在則讀取 否則產生個別資產比例邊界檔並回傳None
+    """
     if not os.path.exists(stock_boundary_path):
         stock_name_dict = {}
         for stock in stock_class_list:
@@ -201,7 +158,11 @@ def check_boundary_exist(stock_boundary_path, stock_class_list):
 def exec_general_efficient_frontier(stock_class_list, stocks_df, expected_returns, covariance_matrix,
                                     weight_bounds, stock_boundary_path, target_return, market_neutral,
                                     risk_free_rate, save):
+    """計算效率前緣 並回傳結果"""
+    # 計算效率前緣
     ef = pypfopt.efficient_frontier.EfficientFrontier(expected_returns, covariance_matrix, weight_bounds=weight_bounds)
+
+    # 檢查邊界限制
     if stock_boundary_path != 'None':
         if not check_boundary_exist(stock_boundary_path, stock_class_list):
             return
@@ -209,10 +170,12 @@ def exec_general_efficient_frontier(stock_class_list, stocks_df, expected_return
         ef.add_constraint(lambda x: x <= np.array(upper_bound_array))
         ef.add_constraint(lambda x: x >= np.array(lower_bound_array))
 
+    # 檢查是否有目標回報
     if target_return:
+        # 以目標報酬率及市場情況計算資產配比重
         weights = ef.efficient_return(target_return=target_return, market_neutral=market_neutral)
     else:
-        weights = ef.max_sharpe(risk_free_rate=risk_free_rate)
+        weights = ef.max_sharpe(risk_free_rate=risk_free_rate)  # 以最大夏普比例計算資產配比重
     result_dict = save_result(weights, ef.clean_weights(), ef.portfolio_performance(risk_free_rate=risk_free_rate),
                               save)
     return result_dict
@@ -220,7 +183,8 @@ def exec_general_efficient_frontier(stock_class_list, stocks_df, expected_return
 
 def exec_black_litterman(stock_class_list, stocks_df, covariance_matrix, vews_path,
                          weight_bounds, stock_boundary_path, target_return, market_neutral, risk_free_rate, save):
-    mcaps = {}
+    """將 views, prior套用，預測期望報酬，再計算資產配置權重"""
+    # 讀取觀點矩陣
     if not os.path.exists(vews_path):
         stock_name_dict = {}
         for stock in stock_class_list:
@@ -233,10 +197,16 @@ def exec_black_litterman(stock_class_list, stocks_df, covariance_matrix, vews_pa
         with open(vews_path, 'r') as f:
             viewdict = json.load(f)
 
+    # 取得股票總市值
+    mcaps = {}
     for stock in tqdm(stock_class_list):
         mcaps[stock.get_stock_name()] = yf.Ticker(stock.get_stock_name()).info["marketCap"]
+
+    # 在市值中計算取得市場對於回報的估計
     delta = pypfopt.black_litterman.market_implied_risk_aversion(stocks_df)
     prior = pypfopt.black_litterman.market_implied_prior_returns(mcaps, delta, covariance_matrix)
+
+    # 套入模型計算估計報酬
     bl = pypfopt.BlackLittermanModel(S, pi=prior, absolute_views=viewdict, prior=prior)
     rets = bl.bl_returns()
     ef = pypfopt.efficient_frontier.EfficientFrontier(rets, S, weight_bounds=weight_bounds)
@@ -255,9 +225,10 @@ def exec_black_litterman(stock_class_list, stocks_df, covariance_matrix, vews_pa
     return result_dict
 
 
-def exec_hierarchical_risky_party(stocks_df, s, risk_free_rate, frequency, save):
+def exec_hierarchical_risky_party(stocks_df, covariance_matrix, risk_free_rate, frequency, save):
+    """將每日pct_change, covariance_matrix, and 交易頻率 套入 Hierarchical Risk Parity計算解果"""
     returns = stocks_df.pct_change().dropna()
-    HRP = pypfopt.hierarchical_portfolio.HRPOpt(returns=returns, cov_matrix=s)
+    HRP = pypfopt.hierarchical_portfolio.HRPOpt(returns=returns, cov_matrix=covariance_matrix)
     result_dict = save_result(HRP.optimize(), HRP.clean_weights(),
                               HRP.portfolio_performance(risk_free_rate=risk_free_rate, frequency=frequency), save)
 
