@@ -1,6 +1,10 @@
+<<<<<<< HEAD
 ---
 marp: true
 ---
+=======
+
+>>>>>>> f44f691ff7e9ccbaf058aaa1a3a2cbc9efceb10c
 
 # portfolio_management
 
@@ -188,4 +192,8 @@ python finance.py --mode 3 --input_path ./stockFile --save False
 | 指令      | 型別      | 作用     | 範例      |
 | -------- | -------- | -------- | -------- |
 | --risk_free_rate, -RFR | float | 設定無風險資產比例，預設為0.02 | ```--risk_free_rate 0.1```|
+<<<<<<< HEAD
 | --frequency, -F | int | 一年中的交易頻率，預設為252 | ```--frequency 252```|
+=======
+| --frequency, -F | int | 一年中的交易頻率，預設為252 | ```--frequency 252```|
+>>>>>>> f44f691ff7e9ccbaf058aaa1a3a2cbc9efceb10c
